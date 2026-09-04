@@ -2,6 +2,7 @@ const { generateResponse } = require("../services/ai/groq.provider");
 const { sendWhatsAppMessage } = require("../services/whatsapp/whatsapp.service");
 const config = require("../config/environment");
 
+// Verify webhook with Meta
 async function verifyWebhook(req, res) {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
@@ -15,6 +16,7 @@ async function verifyWebhook(req, res) {
   return res.sendStatus(403);
 }
 
+// Receive incoming WhatsApp messages
 async function receiveWebhook(req, res) {
   try {
     const body = req.body;
@@ -27,28 +29,48 @@ async function receiveWebhook(req, res) {
     const changes = entry?.changes?.[0];
     const value = changes?.value;
 
+    // Ignore delivery/read status webhooks
+    const status = value?.statuses?.[0];
+
+    if (status) {
+      console.log(`WhatsApp message status: ${status.status}`);
+      return res.sendStatus(200);
+    }
+
     const message = value?.messages?.[0];
 
+    // No incoming message
     if (!message) {
       return res.sendStatus(200);
     }
 
+    // Currently handle text messages only
     if (message.type !== "text") {
       return res.sendStatus(200);
     }
 
-    const from = message.from;
+    // Support both traditional WhatsApp IDs and newer user IDs
+    const recipient =
+      message.from_user_id ||
+      message.from ||
+      value?.contacts?.[0]?.user_id ||
+      value?.contacts?.[0]?.wa_id;
+
     const userMessage = message.text?.body;
 
-    if (!from || !userMessage) {
+    if (!recipient || !userMessage) {
       return res.sendStatus(200);
     }
 
-    console.log(`WhatsApp message from ${from}: ${userMessage}`);
+    console.log("Incoming WhatsApp message received.");
 
+    // Generate HealthBot response
     const aiResponse = await generateResponse(userMessage);
 
-    await sendWhatsAppMessage(from, aiResponse);
+    // Send response back through WhatsApp
+    await sendWhatsAppMessage(recipient, aiResponse);
+
+    console.log("HealthBot reply sent successfully.");
 
     return res.sendStatus(200);
   } catch (error) {
