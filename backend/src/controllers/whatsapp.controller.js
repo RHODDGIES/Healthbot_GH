@@ -1,5 +1,6 @@
 const { generateResponse } = require("../services/ai/groq.provider");
 const { sendWhatsAppMessage } = require("../services/whatsapp/whatsapp.service");
+const { saveConversation } = require("../services/health/conversation.service");
 const config = require("../config/environment");
 
 // Verify webhook with Meta
@@ -66,6 +67,13 @@ async function receiveWebhook(req, res) {
 
     // Generate HealthBot response
     const aiResponse = await generateResponse(userMessage);
+
+    // Save conversation to Firestore
+    await saveConversation(
+          recipient,
+          userMessage,
+          aiResponse
+         );
 
     // Send response back through WhatsApp
     await sendWhatsAppMessage(recipient, aiResponse);
