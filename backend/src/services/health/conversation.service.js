@@ -41,8 +41,37 @@ async function getRecentConversations(userId, limit = 5) {
   return conversations.reverse();
 }
 
+async function isMessageProcessed(messageId) {
+  if (!messageId) {
+    return false;
+  }
+
+  const messageRef = db
+    .collection("processedMessages")
+    .doc(messageId);
+
+  const messageDoc = await messageRef.get();
+
+  return messageDoc.exists;
+}
+
+async function markMessageAsProcessed(messageId) {
+  if (!messageId) {
+    return;
+  }
+
+  await db
+    .collection("processedMessages")
+    .doc(messageId)
+    .set({
+      processedAt: new Date()
+    });
+}
+
 module.exports = {
   saveConversation,
   getUserConversations,
-  getRecentConversations
+  getRecentConversations,
+  isMessageProcessed,
+  markMessageAsProcessed
 };

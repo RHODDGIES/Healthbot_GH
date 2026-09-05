@@ -3,7 +3,9 @@ const { sendWhatsAppMessage } = require("../services/whatsapp/whatsapp.service")
 
 const {
   saveConversation,
-  getRecentConversations
+  getRecentConversations,
+  isMessageProcessed,
+  markMessageAsProcessed
 } = require("../services/health/conversation.service");
 
 const config = require("../config/environment");
@@ -63,8 +65,17 @@ async function receiveWebhook(req, res) {
       value?.contacts?.[0]?.wa_id;
 
     const userMessage = message.text?.body;
+    const messageId = message.id;
 
-    if (!recipient || !userMessage) {
+    if (!recipient || !userMessage || !messageId) {
+      return res.sendStatus(200);
+    }
+
+    // Check whether this WhatsApp message was already processed
+    const alreadyProcessed = await isMessageProcessed(messageId);
+
+    if (alreadyProcessed) {
+      console.log("Duplicate WhatsApp message ignored.");
       return res.sendStatus(200);
     }
 
@@ -86,16 +97,20 @@ async function receiveWebhook(req, res) {
     // Send response back through WhatsApp
     await sendWhatsAppMessage(recipient, aiResponse);
 
+    // Only mark the message as processed after the reply succeeds
+    await markMessageAsProcessed(messageId);
+
     console.log("HealthBot reply sent successfully.");
+    console.log("WhatsApp message marked as processed.");
 
     return res.sendStatus(200);
   } catch (error) {
-  console.error("WhatsApp Webhook Error:", error.message);
+    console.error("WhatsApp Webhook Error:", error.message);
 
-  // Return 200 so Meta does not repeatedly retry
-  // the same webhook when an external service fails.
-  return res.sendStatus(200);
-}
+    // Return 200 so Meta does not repeatedly retry
+    // the same webhook when an external service fails.
+    return res.sendStatus(200);
+  }
 }
 
 module.exports = {
