@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HealthBot GH — Health answers, in your language</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app">
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div class="brand-text">
+        <h1>HealthBot GH</h1>
+        <p class="status" id="statusLine">Ask about malaria, typhoid or cholera</p>
+      </div>
+    </div>
+    <div class="lang-switch" role="group" aria-label="Choose language">
+      <button class="lang-pill is-active" data-lang="en">En</button>
+      <button class="lang-pill" data-lang="tw">Twi</button>
+      <button class="lang-pill" data-lang="ee">Eʋe</button>
+    </div>
+  </header>
+
+  <main class="chat-log" id="chatLog" aria-live="polite">
+    <!-- messages injected here -->
+  </main>
+
+  <div class="quick-chips" id="quickChips">
+    <button class="chip" data-topic="malaria">Malaria</button>
+    <button class="chip" data-topic="typhoid">Typhoid</button>
+    <button class="chip" data-topic="cholera">Cholera</button>
+  </div>
+
+  <form class="composer" id="composerForm">
+    <input
+      type="text"
+      id="messageInput"
+      placeholder="Type your question…"
+      autocomplete="off"
+      aria-label="Type your health question"
+    >
+    <button type="submit" class="send-btn" aria-label="Send message">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+        <path d="M4 12L20 4L14 20L11 13L4 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </form>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
