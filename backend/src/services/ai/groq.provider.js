@@ -4,7 +4,7 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
-async function generateResponse(message) {
+async function generateResponse(message, history = []) {
   const completion = await groq.chat.completions.create({
     model: "openai/gpt-oss-120b",
 
@@ -31,21 +31,35 @@ Rules:
 - Consider the Ghanaian healthcare context when relevant.
 `
       },
+
+      ...history.flatMap((conversation) => [
+        {
+          role: "user",
+          content: conversation.userMessage
+        },
+        {
+          role: "assistant",
+          content: conversation.botResponse
+        }
+      ]),
+
       {
         role: "user",
         content: message
       }
     ],
 
-    max_completion_tokens: 700
+    max_completion_tokens: 400
   });
 
   const response = completion.choices[0]?.message?.content || "";
 
-  // Final safeguard for WhatsApp's message-size limit
+  // Final safeguard for WhatsApp's 4096-character text limit
   if (response.length > 4000) {
-    return response.substring(0, 3950) +
-      "\n\nPlease ask me if you'd like more information.";
+    return (
+      response.substring(0, 3950) +
+      "\n\nPlease ask me if you'd like more information."
+    );
   }
 
   return response;

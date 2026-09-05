@@ -1,6 +1,11 @@
 const { generateResponse } = require("../services/ai/groq.provider");
 const { sendWhatsAppMessage } = require("../services/whatsapp/whatsapp.service");
-const { saveConversation } = require("../services/health/conversation.service");
+
+const {
+  saveConversation,
+  getRecentConversations
+} = require("../services/health/conversation.service");
+
 const config = require("../config/environment");
 
 // Verify webhook with Meta
@@ -65,15 +70,18 @@ async function receiveWebhook(req, res) {
 
     console.log("Incoming WhatsApp message received.");
 
-    // Generate HealthBot response
-    const aiResponse = await generateResponse(userMessage);
+    // Get recent conversation history
+    const history = await getRecentConversations(recipient, 2);
+
+    // Generate contextual HealthBot response
+    const aiResponse = await generateResponse(userMessage, history);
 
     // Save conversation to Firestore
     await saveConversation(
-          recipient,
-          userMessage,
-          aiResponse
-         );
+      recipient,
+      userMessage,
+      aiResponse
+    );
 
     // Send response back through WhatsApp
     await sendWhatsAppMessage(recipient, aiResponse);
@@ -82,10 +90,12 @@ async function receiveWebhook(req, res) {
 
     return res.sendStatus(200);
   } catch (error) {
-    console.error("WhatsApp Webhook Error:", error.message);
+  console.error("WhatsApp Webhook Error:", error.message);
 
-    return res.sendStatus(500);
-  }
+  // Return 200 so Meta does not repeatedly retry
+  // the same webhook when an external service fails.
+  return res.sendStatus(200);
+}
 }
 
 module.exports = {

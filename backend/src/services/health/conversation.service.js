@@ -23,7 +23,26 @@ async function getUserConversations(userId) {
   }));
 }
 
+async function getRecentConversations(userId, limit = 5) {
+  const snapshot = await db
+    .collection("conversations")
+    .where("userId", "==", userId)
+    .orderBy("createdAt", "desc")
+    .limit(limit)
+    .get();
+
+  const conversations = snapshot.docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+
+  // Firestore returns newest first.
+  // Reverse so Groq receives the conversation in chronological order.
+  return conversations.reverse();
+}
+
 module.exports = {
   saveConversation,
-  getUserConversations
+  getUserConversations,
+  getRecentConversations
 };
