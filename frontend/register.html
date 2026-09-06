@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Create Account | HealthBot GH</title>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body class="auth-page">
+
+  <main class="auth-container">
+
+    <section class="auth-brand">
+      <div class="brand-mark"></div>
+
+      <div>
+        <h1>HealthBot GH</h1>
+        <p>AI health information for Ghana</p>
+      </div>
+    </section>
+
+    <section class="auth-box">
+
+      <div class="auth-heading">
+        <span>GET STARTED</span>
+
+        <h2>Create your account</h2>
+
+        <p>
+          Create an account to access HealthBot GH
+          and keep your health conversations together.
+        </p>
+      </div>
+
+      <form id="registerForm">
+
+        <div class="auth-field">
+          <label for="name">Name</label>
+
+          <input
+            id="name"
+            type="text"
+            placeholder="Enter your name"
+            autocomplete="name"
+            required
+          />
+        </div>
+
+        <div class="auth-field">
+          <label for="email">Email address</label>
+
+          <input
+            id="email"
+            type="email"
+            placeholder="you@example.com"
+            autocomplete="email"
+            required
+          />
+        </div>
+
+        <div class="auth-field">
+          <label for="password">Password</label>
+
+          <input
+            id="password"
+            type="password"
+            placeholder="At least 6 characters"
+            minlength="6"
+            autocomplete="new-password"
+            required
+          />
+        </div>
+
+        <div class="auth-field">
+          <label for="confirmPassword">
+            Confirm password
+          </label>
+
+          <input
+            id="confirmPassword"
+            type="password"
+            placeholder="Enter your password again"
+            minlength="6"
+            autocomplete="new-password"
+            required
+          />
+        </div>
+
+        <p
+          id="authMessage"
+          class="auth-message"
+        ></p>
+
+        <button
+          id="registerButton"
+          class="auth-button"
+          type="submit"
+        >
+          Create account
+        </button>
+
+      </form>
+
+      <p class="auth-switch">
+        Already have an account?
+        <a href="login.html">Sign in</a>
+      </p>
+
+      <p class="auth-disclaimer">
+        HealthBot GH provides general health information
+        only and does not replace professional medical care.
+      </p>
+
+    </section>
+
+  </main>
+
+  <script type="module">
+    import {
+      registerUser
+    } from "./auth.js";
+
+    const form =
+      document.getElementById("registerForm");
+
+    const button =
+      document.getElementById("registerButton");
+
+    const message =
+      document.getElementById("authMessage");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const name =
+        document.getElementById("name").value.trim();
+
+      const email =
+        document.getElementById("email").value.trim();
+
+      const password =
+        document.getElementById("password").value;
+
+      const confirmPassword =
+        document.getElementById("confirmPassword").value;
+
+      message.textContent = "";
+      message.className = "auth-message";
+
+      if (password !== confirmPassword) {
+        message.textContent =
+          "Passwords do not match.";
+
+        message.classList.add("error");
+
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "Creating account...";
+
+      try {
+        await registerUser(
+          name,
+          email,
+          password
+        );
+
+        message.textContent =
+          "Account created successfully.";
+
+        message.classList.add("success");
+
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 700);
+
+      } catch (error) {
+        console.error(
+          "Registration error:",
+          error
+        );
+
+        if (
+          error.code ===
+          "auth/email-already-in-use"
+        ) {
+          message.textContent =
+            "An account with this email already exists.";
+        } else if (
+          error.code ===
+          "auth/weak-password"
+        ) {
+          message.textContent =
+            "Please choose a stronger password.";
+        } else if (
+          error.code ===
+          "auth/invalid-email"
+        ) {
+          message.textContent =
+            "Please enter a valid email address.";
+        } else {
+          message.textContent =
+            "Unable to create your account. Please try again.";
+        }
+
+        message.classList.add("error");
+
+        button.disabled = false;
+        button.textContent = "Create account";
+      }
+    });
+  </script>
+
+</body>
+</html>
