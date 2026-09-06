@@ -484,3 +484,48 @@ body {
 .logout-btn:hover {
   background: rgba(255, 255, 255, 0.12);
 }
+/* --------------------------------------------------
+   CHAT MESSAGE IMPROVEMENTS
+-------------------------------------------------- */
+
+.msg {
+  line-height: 1.55;
+}
+
+.msg.bot {
+  max-width: 88%;
+}
+
+.msg.user {
+  max-width: 78%;
+}
+
+.msg-text {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.msg-text strong {
+  font-weight: 700;
+}
+
+.msg.bot .msg-text {
+  display: block;
+}
+
+.msg-time {
+  display: block;
+  margin-top: 6px;
+  opacity: 0.65;
+  font-size: 0.68rem;
+}
+
+@media (max-width: 600px) {
+  .msg.bot {
+    max-width: 92%;
+  }
+
+  .msg.user {
+    max-width: 85%;
+  }
+}

@@ -3,8 +3,9 @@
  *
  * Backend:
  * POST /api/ai/chat
+ * GET  /api/ai/history
  *
- * Firebase Authentication is used to obtain
+ * Firebase Authentication supplies
  * the ID token required by the backend.
  */
 
@@ -34,14 +35,18 @@ const messageInput = document.getElementById("messageInput");
 const statusLine = document.getElementById("statusLine");
 const quickChips = document.getElementById("quickChips");
 const logoutButton = document.getElementById("logoutButton");
-
 const sendBtn = composerForm.querySelector(".send-btn");
+
+// --------------------------------------------------
+// STATE
+// --------------------------------------------------
+
+let currentLanguage = "en";
+let historyLoaded = false;
 
 // --------------------------------------------------
 // LANGUAGE
 // --------------------------------------------------
-
-let currentLanguage = "en";
 
 const greetings = {
   en:
@@ -81,29 +86,54 @@ function timeNow() {
   });
 }
 
-function addMessage(text, role, { flagged = false } = {}) {
+function formatMessageText(text) {
+  const escaped = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  return escaped
+  .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+  .replace(/\*(.*?)\*/g, "<em>$1</em>")
+  .replace(/\n/g, "<br>");
+}
+
+function addMessage(
+  text,
+  role,
+  {
+    flagged = false,
+    time = null
+  } = {}
+) {
   if (!text) {
     return;
   }
 
   const bubble = document.createElement("div");
 
-  bubble.className = `msg ${role}${flagged ? " alert" : ""}`;
+  bubble.className =
+    `msg ${role}${flagged ? " alert" : ""}`;
 
-  const textNode = document.createElement("span");
+  const textNode = document.createElement("div");
 
   textNode.className = "msg-text";
-  textNode.textContent = text;
+
+  if (role === "bot") {
+    textNode.innerHTML = formatMessageText(text);
+  } else {
+    textNode.textContent = text;
+  }
 
   bubble.appendChild(textNode);
 
   if (role !== "system") {
-    const time = document.createElement("span");
+    const timeElement = document.createElement("span");
 
-    time.className = "msg-time";
-    time.textContent = timeNow();
+    timeElement.className = "msg-time";
+    timeElement.textContent = time || timeNow();
 
-    bubble.appendChild(time);
+    bubble.appendChild(timeElement);
   }
 
   chatLog.appendChild(bubble);
@@ -135,7 +165,8 @@ function showTyping() {
 }
 
 function hideTyping() {
-  const element = document.getElementById("typingIndicator");
+  const element =
+    document.getElementById("typingIndicator");
 
   if (element) {
     element.remove();
@@ -154,6 +185,39 @@ function setLoading(isLoading) {
   }
 }
 
+function clearChat() {
+  chatLog.innerHTML = "";
+}
+
+function formatHistoryTime(createdAt) {
+  if (!createdAt) {
+    return "";
+  }
+
+  let date;
+
+  if (createdAt._seconds !== undefined) {
+    date = new Date(
+      createdAt._seconds * 1000
+    );
+  } else if (createdAt.seconds !== undefined) {
+    date = new Date(
+      createdAt.seconds * 1000
+    );
+  } else {
+    date = new Date(createdAt);
+  }
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 // --------------------------------------------------
 // FIREBASE AUTH TOKEN
 // --------------------------------------------------
@@ -163,7 +227,118 @@ async function getAuthToken() {
 }
 
 // --------------------------------------------------
-// BACKEND REQUEST
+// LOAD CONVERSATION HISTORY
+// --------------------------------------------------
+
+async function loadConversationHistory() {
+  if (historyLoaded) {
+    return;
+  }
+
+  const token = await getAuthToken();
+
+  if (!token) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/ai/history`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data?.error ||
+          "Unable to load conversation history."
+      );
+    }
+
+    const conversations =
+      data.conversations || [];
+
+    clearChat();
+
+    if (conversations.length === 0) {
+      addMessage(
+        greetings[currentLanguage],
+        "bot"
+      );
+
+      historyLoaded = true;
+
+      return;
+    }
+
+    conversations
+      .sort((a, b) => {
+        const aTime =
+          a.createdAt?._seconds ??
+          a.createdAt?.seconds ??
+          0;
+
+        const bTime =
+          b.createdAt?._seconds ??
+          b.createdAt?.seconds ??
+          0;
+
+        return aTime - bTime;
+      })
+      .forEach((conversation) => {
+        const historyTime =
+          formatHistoryTime(
+            conversation.createdAt
+          );
+
+        addMessage(
+          conversation.userMessage,
+          "user",
+          {
+            time: historyTime
+          }
+        );
+
+        addMessage(
+          conversation.botResponse,
+          "bot",
+          {
+            time: historyTime
+          }
+        );
+      });
+
+    historyLoaded = true;
+
+  } catch (error) {
+    console.error(
+      "Conversation history error:",
+      error
+    );
+
+    clearChat();
+
+    addMessage(
+      greetings[currentLanguage],
+      "bot"
+    );
+
+    addSystemMessage(
+      "Previous conversations could not be loaded."
+    );
+
+    historyLoaded = true;
+  }
+}
+
+// --------------------------------------------------
+// SEND MESSAGE TO BACKEND
 // --------------------------------------------------
 
 async function getReply(message) {
@@ -229,7 +404,8 @@ async function getReply(message) {
 
   return {
     text: data.response,
-    conversationId: data.conversationId || null,
+    conversationId:
+      data.conversationId || null,
     flagged: false
   };
 }
@@ -245,22 +421,28 @@ async function handleUserMessage(text) {
     return;
   }
 
-  addMessage(trimmed, "user");
+  addMessage(
+    trimmed,
+    "user"
+  );
 
   messageInput.value = "";
 
   setLoading(true);
 
   try {
-    const result = await getReply(trimmed);
+    const result =
+      await getReply(trimmed);
 
     addMessage(
       result.text,
       "bot",
       {
-        flagged: result.flagged
+        flagged:
+          result.flagged
       }
     );
+
   } catch (error) {
     console.error(
       "HealthBot frontend error:",
@@ -271,6 +453,7 @@ async function handleUserMessage(text) {
       error.message ||
         "HealthBot is temporarily unavailable. Please try again shortly."
     );
+
   } finally {
     setLoading(false);
   }
@@ -306,7 +489,8 @@ if (quickChips) {
         return;
       }
 
-      const topic = chip.dataset.topic;
+      const topic =
+        chip.dataset.topic;
 
       if (!topic) {
         return;
@@ -314,29 +498,43 @@ if (quickChips) {
 
       let message = topic;
 
-      if (currentLanguage === "tw") {
+      if (
+        currentLanguage === "tw"
+      ) {
         const twiTopics = {
-          malaria: "Malaria ho nsɛm",
-          typhoid: "Typhoid ho nsɛm",
-          cholera: "Cholera ho nsɛm"
+          malaria:
+            "Malaria ho nsɛm",
+          typhoid:
+            "Typhoid ho nsɛm",
+          cholera:
+            "Cholera ho nsɛm"
         };
 
         message =
-          twiTopics[topic] || topic;
+          twiTopics[topic] ||
+          topic;
       }
 
-      if (currentLanguage === "ee") {
+      if (
+        currentLanguage === "ee"
+      ) {
         const eweTopics = {
-          malaria: "Malaria ŋu nya",
-          typhoid: "Typhoid ŋu nya",
-          cholera: "Cholera ŋu nya"
+          malaria:
+            "Malaria ŋu nya",
+          typhoid:
+            "Typhoid ŋu nya",
+          cholera:
+            "Cholera ŋu nya"
         };
 
         message =
-          eweTopics[topic] || topic;
+          eweTopics[topic] ||
+          topic;
       }
 
-      handleUserMessage(message);
+      handleUserMessage(
+        message
+      );
     }
   );
 }
@@ -367,12 +565,16 @@ document
           pill.dataset.lang;
 
         statusLine.textContent =
-          statusText[currentLanguage] ||
+          statusText[
+            currentLanguage
+          ] ||
           statusText.en;
 
         let message;
 
-        if (currentLanguage === "tw") {
+        if (
+          currentLanguage === "tw"
+        ) {
           message =
             "Wɔasesa kasa no akɔ Twi.";
         } else if (
@@ -385,7 +587,9 @@ document
             "Language set to English.";
         }
 
-        addSystemMessage(message);
+        addSystemMessage(
+          message
+        );
 
         console.log(
           `HealthBot language preference: ${
@@ -407,7 +611,8 @@ if (logoutButton) {
     "click",
     async () => {
       try {
-        logoutButton.disabled = true;
+        logoutButton.disabled =
+          true;
 
         logoutButton.textContent =
           "Signing out...";
@@ -416,13 +621,15 @@ if (logoutButton) {
 
         window.location.href =
           "login.html";
+
       } catch (error) {
         console.error(
           "Logout error:",
           error
         );
 
-        logoutButton.disabled = false;
+        logoutButton.disabled =
+          false;
 
         logoutButton.textContent =
           "Sign out";
@@ -436,21 +643,25 @@ if (logoutButton) {
 }
 
 // --------------------------------------------------
-// PROTECT CHAT PAGE
+// PROTECT CHAT + LOAD HISTORY
 // --------------------------------------------------
 
-watchAuthState((user) => {
-  if (!user) {
-    window.location.href =
-      "login.html";
+watchAuthState(
+  async (user) => {
+    if (!user) {
+      window.location.href =
+        "login.html";
 
-    return;
+      return;
+    }
+
+    console.log(
+      "HealthBot user authenticated."
+    );
+
+    await loadConversationHistory();
   }
-
-  console.log(
-    "HealthBot user authenticated."
-  );
-});
+);
 
 // --------------------------------------------------
 // INITIAL STATE
@@ -458,10 +669,5 @@ watchAuthState((user) => {
 
 statusLine.textContent =
   statusText.en;
-
-addMessage(
-  greetings.en,
-  "bot"
-);
 
 messageInput.focus();
