@@ -1,5 +1,12 @@
 const { generateResponse } = require("../services/ai/groq.provider");
-const { sendWhatsAppMessage } = require("../services/whatsapp/whatsapp.service");
+const {
+  transcribeAudio
+} = require("../services/ai/groq-transcription.provider");
+
+const {
+  downloadWhatsAppMedia,
+  sendWhatsAppMessage
+} = require("../services/whatsapp/whatsapp.service");
 
 const {
   saveConversation,
@@ -9,6 +16,9 @@ const {
 } = require("../services/health/conversation.service");
 
 const config = require("../config/environment");
+
+const voiceNoteFailureMessage =
+  "Sorry, I couldn't understand that voice note. Please send a shorter, clearer voice note or type your health question.";
 
 // Verify webhook with Meta
 async function verifyWebhook(req, res) {
@@ -52,8 +62,11 @@ async function receiveWebhook(req, res) {
       return res.sendStatus(200);
     }
 
-    // Currently handle text messages only
-    if (message.type !== "text") {
+    const isTextMessage = message.type === "text";
+    const isAudioMessage = message.type === "audio";
+
+    // Ignore message types that HealthBot does not support yet.
+    if (!isTextMessage && !isAudioMessage) {
       return res.sendStatus(200);
     }
 
@@ -64,10 +77,15 @@ async function receiveWebhook(req, res) {
       value?.contacts?.[0]?.user_id ||
       value?.contacts?.[0]?.wa_id;
 
-    const userMessage = message.text?.body;
+    const textMessage = message.text?.body;
+    const audioMediaId = message.audio?.id;
     const messageId = message.id;
 
-    if (!recipient || !userMessage || !messageId) {
+    const hasMessageContent =
+      (isTextMessage && textMessage) ||
+      (isAudioMessage && audioMediaId);
+
+    if (!recipient || !hasMessageContent || !messageId) {
       return res.sendStatus(200);
     }
 
@@ -79,7 +97,36 @@ async function receiveWebhook(req, res) {
       return res.sendStatus(200);
     }
 
-    console.log("Incoming WhatsApp message received.");
+    let userMessage = textMessage;
+
+    if (isAudioMessage) {
+      try {
+        const audio = await downloadWhatsAppMedia(audioMediaId);
+
+        userMessage = await transcribeAudio(
+          audio.buffer,
+          audio.mimeType || message.audio?.mime_type
+        );
+
+        console.log("Incoming WhatsApp voice note transcribed.");
+      } catch (error) {
+        console.error(
+          "WhatsApp Voice Note Error:",
+          error.message
+        );
+
+        await sendWhatsAppMessage(
+          recipient,
+          voiceNoteFailureMessage
+        );
+
+        await markMessageAsProcessed(messageId);
+
+        return res.sendStatus(200);
+      }
+    } else {
+      console.log("Incoming WhatsApp text message received.");
+    }
 
     // Get recent conversation history
     const history = await getRecentConversations(recipient, 2);

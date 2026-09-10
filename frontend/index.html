@@ -10,9 +10,59 @@
 </head>
 <body>
 
-<div class="app">
+<div class="chat-layout">
+
+  <aside class="conversation-sidebar" id="conversationSidebar" aria-label="Chat history">
+    <div class="conversation-sidebar-header">
+      <h2>Chats</h2>
+      <button
+        class="sidebar-close-button"
+        id="sidebarCloseButton"
+        type="button"
+        aria-label="Close chat history"
+      >×</button>
+    </div>
+
+    <button class="new-chat-button" id="newChatButton" type="button">
+      <span class="new-chat-button-icon" aria-hidden="true">＋</span>
+      <span id="newChatButtonLabel">New Chat</span>
+    </button>
+
+    <p
+      class="new-chat-status"
+      id="newChatStatus"
+      aria-live="polite"
+    ></p>
+
+    <div class="conversation-list" id="conversationList">
+      <p class="conversation-list-status">Loading chats…</p>
+    </div>
+  </aside>
+
+  <button
+    class="sidebar-backdrop"
+    id="sidebarBackdrop"
+    type="button"
+    tabindex="-1"
+    aria-label="Close chat history"
+  ></button>
+
+  <div class="app">
 
   <header class="app-header">
+    <button
+      class="history-toggle-button"
+      id="historyToggleButton"
+      type="button"
+      aria-label="Open chat history"
+      aria-controls="conversationSidebar"
+      aria-expanded="false"
+    >
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+        <path d="M4 6H20M4 12H20M4 18H14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
+
     <div class="brand">
       <span class="brand-mark" aria-hidden="true"></span>
       <div class="brand-text">
@@ -40,6 +90,12 @@
     <button class="chip" data-topic="cholera">Cholera</button>
   </div>
 
+  <p
+    class="voice-note-status"
+    id="voiceNoteStatus"
+    aria-live="polite"
+  ></p>
+
   <form class="composer" id="composerForm">
     <input
       type="text"
@@ -48,6 +104,19 @@
       autocomplete="off"
       aria-label="Type your health question"
     >
+    <button
+      type="button"
+      class="voice-note-button"
+      id="voiceNoteButton"
+      aria-label="Record an English voice note"
+      aria-pressed="false"
+      title="Record an English voice note"
+    >
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+        <path d="M12 3C10.34 3 9 4.34 9 6V12C9 13.66 10.34 15 12 15C13.66 15 15 13.66 15 12V6C15 4.34 13.66 3 12 3Z" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M5.5 11.5V12C5.5 15.59 8.41 18.5 12 18.5C15.59 18.5 18.5 15.59 18.5 12V11.5M12 18.5V22M9 22H15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </button>
     <button type="submit" class="send-btn" aria-label="Send message">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
         <path d="M4 12L20 4L14 20L11 13L4 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
@@ -55,7 +124,10 @@
     </button>
   </form>
 
+  </div>
+
 </div>
 
 <script type="module" src="app.js"></script>
+</body>
 </html>

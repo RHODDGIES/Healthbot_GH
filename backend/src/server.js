@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const path = require("node:path");
 require("dotenv").config();
 
 const { db } = require("./config/firebase");
@@ -9,6 +10,10 @@ const userRoutes = require("./routes/user.routes");
 const whatsappRoutes = require("./routes/whatsapp.routes");
 
 const app = express();
+const frontendDirectory = path.join(
+  __dirname,
+  "../../frontend"
+);
 
 app.use(cors());
 app.use(express.json());
@@ -24,6 +29,8 @@ app.get("/api/health", (req, res) => {
     message: "HealthBot GH API is running"
   });
 });
+
+app.use(express.static(frontendDirectory));
 
 const PORT = process.env.PORT || 5000;
 

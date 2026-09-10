@@ -1,0 +1,28 @@
+{
+  "language": "English",
+  "code": "en",
+  "greetings": {
+    "hello": "Hello",
+    "welcome": "Welcome to HealthBot GH",
+    "howCanIHelp": "How can I help you today?"
+  },
+  "healthTerms": {
+    "fever": "fever",
+    "headache": "headache",
+    "stomachPain": "stomach pain",
+    "vomiting": "vomiting",
+    "diarrhoea": "diarrhoea",
+    "difficultyBreathing": "difficulty breathing",
+    "malaria": "malaria",
+    "hospital": "hospital",
+    "doctor": "doctor",
+    "nurse": "nurse",
+    "medicine": "medicine"
+  },
+  "safety": {
+    "seekMedicalHelp": "Seek medical attention.",
+    "urgentHelp": "Get medical help urgently.",
+    "nearestHospital": "Go to the nearest hospital.",
+    "emergency112": "Call emergency services on 112."
+  }
+}

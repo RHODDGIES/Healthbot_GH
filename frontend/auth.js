@@ -6,7 +6,7 @@ import {
   updateProfile,
   onAuthStateChanged,
   signOut
-} from "https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js";
+} from "./vendor/firebase-auth.js";
 
 // --------------------------------------------------
 // REGISTER

@@ -28,12 +28,164 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.chat-layout {
+  display: flex;
+  width: min(100%, 750px);
+  height: 100dvh;
+  margin: 0 auto;
+  background: var(--surface);
+  box-shadow: 0 0 30px rgba(22, 63, 50, 0.08);
+}
+
+.conversation-sidebar {
+  width: 270px;
+  height: 100dvh;
+  padding: 16px 12px;
+  background: var(--teal-dark);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.conversation-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 12px;
+}
+
+.conversation-sidebar-header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.sidebar-close-button {
+  display: none;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: white;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.new-chat-button {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 13px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.new-chat-button-icon {
+  margin-right: 7px;
+  color: var(--gold);
+  font-size: 17px;
+}
+
+.new-chat-button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.new-chat-button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.new-chat-status {
+  min-height: 17px;
+  margin: 7px 5px 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.new-chat-status.error {
+  color: #ffd2cc;
+}
+
+.conversation-list {
+  flex: 1;
+  min-height: 0;
+  margin-top: 4px;
+  overflow-y: auto;
+}
+
+.conversation-list-status {
+  margin: 18px 8px;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.conversation-item {
+  display: block;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 10px 11px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.84);
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+}
+
+.conversation-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.conversation-item.is-active {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.conversation-item:disabled {
+  cursor: default;
+}
+
+.conversation-item-title {
+  display: block;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-item-meta {
+  display: block;
+  margin-top: 4px;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 10.5px;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
 .app {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-width: 0;
   height: 100dvh;
   max-width: 480px;
-  margin: 0 auto;
+  margin: 0;
   background: var(--bg);
   position: relative;
 }
@@ -48,6 +200,21 @@ body {
   background: var(--teal);
   color: white;
   flex-shrink: 0;
+}
+
+.history-toggle-button {
+  display: none;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 9px;
+  background: transparent;
+  color: white;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
 }
 
 .brand {
@@ -222,7 +389,34 @@ body {
   color: white;
 }
 
+.chip:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 /* Composer */
+.voice-note-status {
+  margin: 0;
+  padding: 8px 16px 0;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.voice-note-status:empty {
+  display: none;
+}
+
+.voice-note-status.recording {
+  color: #a32626;
+  font-weight: 600;
+}
+
+.voice-note-status.error {
+  color: #a32626;
+}
+
 .composer {
   display: flex;
   align-items: center;
@@ -263,9 +457,40 @@ body {
   cursor: pointer;
 }
 
+.voice-note-button {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--teal-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.voice-note-button.is-recording {
+  border-color: #b42318;
+  background: #b42318;
+  color: white;
+  animation: voice-recording-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes voice-recording-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(180, 35, 24, 0.35); }
+  50% { box-shadow: 0 0 0 7px rgba(180, 35, 24, 0); }
+}
+
 .send-btn:focus-visible,
+.voice-note-button:focus-visible,
 .lang-pill:focus-visible,
-.chip:focus-visible {
+.chip:focus-visible,
+.new-chat-button:focus-visible,
+.conversation-item:focus-visible,
+.sidebar-close-button:focus-visible,
+.history-toggle-button:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
@@ -275,8 +500,97 @@ body {
   cursor: default;
 }
 
+.voice-note-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.voice-message-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+#messageInput:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .chat-layout {
+    width: 100%;
+    max-width: none;
+    box-shadow: none;
+  }
+
+  .app {
+    max-width: none;
+  }
+
+  .conversation-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    width: min(82vw, 300px);
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+    box-shadow: 12px 0 30px rgba(0, 0, 0, 0.2);
+  }
+
+  .conversation-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-close-button,
+  .history-toggle-button {
+    display: flex;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: none;
+    background: rgba(10, 24, 19, 0.46);
+    cursor: pointer;
+  }
+
+  .sidebar-backdrop.is-visible {
+    display: block;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-header {
+    gap: 8px;
+    padding-inline: 10px;
+  }
+
+  .brand-mark,
+  .brand-text .status {
+    display: none;
+  }
+
+  .lang-pill {
+    padding-inline: 8px;
+  }
+
+}
+
+@media (max-width: 380px) {
+  .brand-text {
+    display: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .typing span { animation: none; }
+  .conversation-sidebar { transition: none; }
 }
 /* =========================================
    HealthBot GH - Authentication Pages
@@ -396,6 +710,21 @@ body {
   border-color: #1f6b54;
 }
 
+.auth-forgot-link {
+  display: block;
+  width: fit-content;
+  margin: 9px 0 0 auto;
+  color: #1f6b54;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-forgot-link:hover,
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
 .auth-button {
   width: 100%;
   min-height: 48px;
@@ -430,6 +759,14 @@ body {
 
 .auth-message.success {
   color: #157347;
+}
+
+.auth-help-text {
+  margin: 10px 0 0;
+  color: #6b7280;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  text-align: center;
 }
 
 .auth-switch {
@@ -527,5 +864,11 @@ body {
 
   .msg.user {
     max-width: 85%;
+  }
+}
+
+@media (max-width: 420px) {
+  .logout-btn {
+    padding-inline: 9px;
   }
 }

@@ -1,4 +1,18 @@
 node_modules/
 .env
+.env.*
+!.env.example
 *.log
 serviceAccountKey.json
+
+# Local credentials and machine-specific frontend configuration
+*service-account*.json
+*serviceAccount*.json
+frontend/firebase-config.js
+!frontend/firebase-config.example.js
+
+# Generated reports, test output and operating-system files
+docs/*.docx
+coverage/
+.DS_Store
+Thumbs.db

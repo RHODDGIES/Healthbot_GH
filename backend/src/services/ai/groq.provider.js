@@ -5,18 +5,98 @@ const {
 } = require("../health/response-safety.service");
 
 const {
-  detectLanguage
+  detectLanguage,
+  getLanguageData,
+  getLanguageValidationStatus
 } = require("../language/language.service");
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY
 });
 
-async function generateResponse(message, history = []) {
-  const detectedLanguage = detectLanguage(message);
+
+function buildLanguageGuidance(language) {
+  const languageData = getLanguageData(language);
+  const validationStatus = getLanguageValidationStatus(language);
+
+  const greetings =
+    languageData.greetings || {};
+
+  const healthTerms =
+    languageData.healthTerms || {};
+
+  const safety =
+    languageData.safety || {};
+
+  const hasValidatedTerms =
+    Object.keys(greetings).length > 0 ||
+    Object.keys(healthTerms).length > 0 ||
+    Object.keys(safety).length > 0;
+
+  if (!hasValidatedTerms) {
+    return `
+LANGUAGE VALIDATION
+
+- ${language} translation validation status: ${validationStatus}.
+- No validated local-language terminology is currently available for ${language}.
+- Do not claim that the wording has been medically or linguistically validated.
+- Use simple, natural ${language}.
+- Avoid unusual, overly formal, archaic, or invented words.
+- If you are unsure of a specialised medical term, keep the recognised medical term in English and explain it simply in ${language}.
+- Never mix Twi and Ewe.
+`;
+  }
+
+  return `
+LANGUAGE VALIDATION
+
+- ${language} translation validation status: ${validationStatus}.
+- Prefer the approved terminology below when the relevant concept appears.
+- Do not change the meaning of validated terminology.
+- Do not invent new translations and present them as validated.
+- If a medical concept does not have a validated local-language equivalent, use the recognised English medical term where necessary and explain it simply in ${language}.
+
+APPROVED GREETINGS
+${JSON.stringify(greetings, null, 2)}
+
+APPROVED HEALTH TERMS
+${JSON.stringify(healthTerms, null, 2)}
+
+APPROVED SAFETY PHRASES
+${JSON.stringify(safety, null, 2)}
+`;
+}
+
+
+async function generateResponse(
+  message,
+  history = [],
+  selectedLanguage = null
+) {
+  const automaticallyDetectedLanguage =
+    detectLanguage(message);
+
+  const detectedLanguage =
+    selectedLanguage ||
+    automaticallyDetectedLanguage;
+  const languageGuidance =
+    buildLanguageGuidance(detectedLanguage);
+console.log(
+  `Automatic language detection: ${automaticallyDetectedLanguage}`
+);
+
+console.log(
+  `Selected language: ${selectedLanguage || "none"}`
+);
+
+console.log(
+  `Language being used: ${detectedLanguage}`
+);
 
   console.log(
-    `Detected language: ${detectedLanguage}`
+    `Language validation status: ${getLanguageValidationStatus(
+      detectedLanguage
+    )}`
   );
 
   const completion =
@@ -39,6 +119,8 @@ LANGUAGE
 - Never confuse Twi and Ewe.
 - If the detected language is English, respond in English.
 - Keep using the detected language unless the user explicitly asks to switch.
+
+${languageGuidance}
 
 STYLE
 
@@ -166,8 +248,8 @@ COMPLETENESS
         }
       ],
 
-      // Leave enough room for the model to finish its answer.
-      // The system prompt controls the desired response length.
+      // Leave enough room for the model
+      // to finish its answer.
       max_completion_tokens: 400
     });
 
@@ -177,7 +259,8 @@ COMPLETENESS
   const response =
     applyResponseSafety(rawResponse);
 
-  // Final safeguard for WhatsApp's text-message limit.
+  // Final safeguard for WhatsApp's
+  // text-message limit.
   if (response.length > 4000) {
     return (
       response.substring(0, 3950) +
@@ -187,6 +270,7 @@ COMPLETENESS
 
   return response;
 }
+
 
 module.exports = {
   generateResponse
