@@ -52,7 +52,7 @@ test("sends the active conversation and selected language with chat messages", (
   );
   assert.match(
     script,
-    /language:\s*\n?\s*languageNames\[currentLanguage\]/
+    /language:\s*language\s*\|\|\s*\n?\s*languageNames\[currentLanguage\]/
   );
 });
 

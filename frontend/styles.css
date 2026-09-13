@@ -417,6 +417,24 @@ body {
   color: #a32626;
 }
 
+.voice-transcript-cancel {
+  align-self: center;
+  margin: 7px 14px 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: #a32626;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.voice-transcript-cancel[hidden] {
+  display: none;
+}
+
 .composer {
   display: flex;
   align-items: center;
@@ -485,6 +503,7 @@ body {
 
 .send-btn:focus-visible,
 .voice-note-button:focus-visible,
+.voice-transcript-cancel:focus-visible,
 .lang-pill:focus-visible,
 .chip:focus-visible,
 .new-chat-button:focus-visible,

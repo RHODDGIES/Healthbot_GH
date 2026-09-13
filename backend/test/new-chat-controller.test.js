@@ -249,6 +249,38 @@ test("uses only the active conversation history for session-aware chat", async (
   assert.equal(res.payload.conversationId, "session-1");
 });
 
+test("saves a corrected voice transcription as a voice turn", async () => {
+  resetCalls();
+
+  const res = createResponse();
+
+  await chatWithAI(
+    {
+      user: {
+        uid: "firebase-user-1"
+      },
+      body: {
+        message: "Me ho yɛ me yaw",
+        language: "Twi",
+        conversationId: "session-1",
+        inputType: "voice"
+      }
+    },
+    res
+  );
+
+  assert.equal(calls.generated[0].language, "Twi");
+  assert.deepEqual(calls.sessionSaves, [
+    [
+      "firebase-user-1",
+      "session-1",
+      "Me ho yɛ me yaw",
+      "General health information.",
+      "voice"
+    ]
+  ]);
+});
+
 test("preserves legacy chat behaviour when no session ID is supplied", async () => {
   resetCalls();
 

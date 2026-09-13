@@ -4,6 +4,7 @@ const { test } = require("node:test");
 const calls = {
   generated: [],
   histories: [],
+  khayaTranscribed: [],
   saved: [],
   transcribed: []
 };
@@ -47,13 +48,38 @@ mockModule("../src/services/ai/groq.provider", {
 mockModule("../src/services/ai/groq-transcription.provider", {
   normalizeMimeType: (mimeType = "") =>
     mimeType.split(";")[0].trim().toLowerCase(),
-  transcribeAudio: async (buffer, mimeType) => {
+  transcribeAudio: async (
+    buffer,
+    mimeType,
+    groqClient,
+    transcriptionOptions
+  ) => {
     calls.transcribed.push({
       byteLength: buffer.length,
-      mimeType
+      mimeType,
+      groqClient,
+      transcriptionOptions
     });
 
     return "I have a headache";
+  }
+});
+
+mockModule("../src/services/ai/khaya-transcription.provider", {
+  transcribeAudio: async (
+    buffer,
+    mimeType,
+    languageCode
+  ) => {
+    calls.khayaTranscribed.push({
+      byteLength: buffer.length,
+      mimeType,
+      languageCode
+    });
+
+    return languageCode === "twi"
+      ? "Me ti pae me"
+      : "Ta le nye ɖu me";
   }
 });
 
@@ -125,7 +151,11 @@ test("transcribes and saves an English web voice note in the active chat", async
   assert.deepEqual(calls.transcribed, [
     {
       byteLength: 14,
-      mimeType: "audio/webm"
+      mimeType: "audio/webm",
+      groqClient: undefined,
+      transcriptionOptions: {
+        language: "en"
+      }
     }
   ]);
   assert.deepEqual(calls.generated, [
@@ -149,11 +179,44 @@ test("transcribes and saves an English web voice note in the active chat", async
     transcription: "I have a headache",
     response: "Please seek professional care if your symptoms are severe.",
     conversationId: "session-1",
-    language: "English"
+    language: "English",
+    requiresConfirmation: false
   });
 });
 
-test("rejects non-English web voice notes before transcription", async () => {
+for (const language of ["Twi", "Ewe"]) {
+  test(`returns a ${language} transcription for confirmation before answering`, async () => {
+    resetCalls();
+
+    const res = createResponse();
+    const req = createRequest({
+      headers: {
+        "content-type": "audio/wav",
+        "x-conversation-id": "session-1",
+        "x-healthbot-language": language
+      }
+    });
+
+    await voiceWithAI(req, res);
+
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.payload.language, language);
+    assert.equal(res.payload.requiresConfirmation, true);
+    assert.equal(res.payload.response, undefined);
+    assert.deepEqual(calls.transcribed, []);
+    assert.deepEqual(calls.khayaTranscribed, [
+      {
+        byteLength: 14,
+        mimeType: "audio/wav",
+        languageCode: language === "Twi" ? "twi" : "ewe"
+      }
+    ]);
+    assert.deepEqual(calls.generated, []);
+    assert.deepEqual(calls.saved, []);
+  });
+}
+
+test("rejects unsupported web voice-note languages", async () => {
   resetCalls();
 
   const res = createResponse();
@@ -161,15 +224,16 @@ test("rejects non-English web voice notes before transcription", async () => {
     headers: {
       "content-type": "audio/webm",
       "x-conversation-id": "session-1",
-      "x-healthbot-language": "Twi"
+      "x-healthbot-language": "French"
     }
   });
 
   await voiceWithAI(req, res);
 
   assert.equal(res.statusCode, 400);
-  assert.match(res.payload.error, /English only/);
+  assert.match(res.payload.error, /English, Twi and Ewe/);
   assert.deepEqual(calls.transcribed, []);
+  assert.deepEqual(calls.khayaTranscribed, []);
   assert.deepEqual(calls.generated, []);
   assert.deepEqual(calls.saved, []);
 });
@@ -192,6 +256,7 @@ test("rejects unsupported browser audio formats", async () => {
   assert.match(res.payload.error, /not supported/);
   assert.deepEqual(calls.histories, []);
   assert.deepEqual(calls.transcribed, []);
+  assert.deepEqual(calls.khayaTranscribed, []);
 });
 
 test("rejects voice notes without an active conversation", async () => {
@@ -210,4 +275,5 @@ test("rejects voice notes without an active conversation", async () => {
   assert.equal(res.statusCode, 400);
   assert.match(res.payload.error, /conversation ID/);
   assert.deepEqual(calls.transcribed, []);
+  assert.deepEqual(calls.khayaTranscribed, []);
 });

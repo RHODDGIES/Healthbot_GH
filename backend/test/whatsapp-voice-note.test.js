@@ -69,6 +69,43 @@ test("sends an in-memory voice note to Groq for transcription", async () => {
     transcriptionRequest.file.type,
     "audio/ogg"
   );
+  assert.equal(transcriptionRequest.language, undefined);
+  assert.equal(transcriptionRequest.prompt, undefined);
+});
+
+test("passes optional language and spelling context to Groq transcription", async () => {
+  let transcriptionRequest;
+
+  const groqClient = {
+    audio: {
+      transcriptions: {
+        create: async (request) => {
+          transcriptionRequest = request;
+
+          return {
+            text: "Medaase"
+          };
+        }
+      }
+    }
+  };
+
+  const transcript = await transcribeAudio(
+    Buffer.from("voice-note"),
+    "audio/webm",
+    groqClient,
+    {
+      language: "EN",
+      prompt: "  Twi spelling context. Medaase.  "
+    }
+  );
+
+  assert.equal(transcript, "Medaase");
+  assert.equal(transcriptionRequest.language, "en");
+  assert.equal(
+    transcriptionRequest.prompt,
+    "Twi spelling context. Medaase."
+  );
 });
 
 test("rejects audio formats that Groq cannot transcribe", async () => {

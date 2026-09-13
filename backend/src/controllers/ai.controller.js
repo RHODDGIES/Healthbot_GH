@@ -2,8 +2,12 @@ const { generateResponse } = require("../services/ai/groq.provider");
 
 const {
   normalizeMimeType,
-  transcribeAudio
+  transcribeAudio: transcribeAudioWithGroq
 } = require("../services/ai/groq-transcription.provider");
+
+const {
+  transcribeAudio: transcribeAudioWithKhaya
+} = require("../services/ai/khaya-transcription.provider");
 
 const {
   createChatSession,
@@ -26,6 +30,15 @@ const SUPPORTED_WEB_AUDIO_TYPES = new Set([
   "audio/x-flac",
   "audio/x-wav"
 ]);
+const SUPPORTED_WEB_VOICE_LANGUAGES = new Set([
+  "English",
+  "Twi",
+  "Ewe"
+]);
+const KHAYA_WEB_VOICE_LANGUAGE_CODES = {
+  Twi: "twi",
+  Ewe: "ewe"
+};
 
 
 function sendControllerError(
@@ -53,7 +66,8 @@ async function chatWithAI(req, res) {
     const {
       message,
       language,
-      conversationId
+      conversationId,
+      inputType
     } = req.body;
 
     if (!message || typeof message !== "string") {
@@ -76,6 +90,8 @@ async function chatWithAI(req, res) {
       supportedLanguages.includes(language)
         ? language
         : null;
+    const selectedInputType =
+      inputType === "voice" ? "voice" : "text";
 
     if (
       conversationId !== undefined &&
@@ -126,7 +142,7 @@ async function chatWithAI(req, res) {
         activeConversationId,
         message,
         response,
-        "text"
+        selectedInputType
       );
 
       savedConversationId = activeConversationId;
@@ -195,11 +211,11 @@ async function voiceWithAI(req, res) {
       req.headers["x-healthbot-language"] || "English"
     ).trim();
 
-    if (requestedLanguage !== "English") {
+    if (!SUPPORTED_WEB_VOICE_LANGUAGES.has(requestedLanguage)) {
       return res.status(400).json({
         success: false,
         error:
-          "Web voice notes currently support English only."
+          "Web voice notes support English, Twi and Ewe."
       });
     }
 
@@ -217,21 +233,42 @@ async function voiceWithAI(req, res) {
     const conversationUserId = req.user.uid;
 
     // Loading history first also verifies that this conversation
-    // belongs to the authenticated user before audio is sent to Groq.
+    // belongs to the authenticated user before audio is sent to a
+    // transcription provider.
     const history = await getChatHistory(
       conversationUserId,
       conversationId
     );
 
-    const transcription = await transcribeAudio(
-      req.body,
-      mimeType
-    );
+    const transcription = requestedLanguage === "English"
+      ? await transcribeAudioWithGroq(
+          req.body,
+          mimeType,
+          undefined,
+          {
+            language: "en"
+          }
+        )
+      : await transcribeAudioWithKhaya(
+          req.body,
+          mimeType,
+          KHAYA_WEB_VOICE_LANGUAGE_CODES[requestedLanguage]
+        );
+
+    if (requestedLanguage !== "English") {
+      return res.json({
+        success: true,
+        transcription,
+        conversationId,
+        language: requestedLanguage,
+        requiresConfirmation: true
+      });
+    }
 
     const response = await generateResponse(
       transcription,
       history,
-      "English"
+      requestedLanguage
     );
 
     await saveChatTurn(
@@ -247,7 +284,8 @@ async function voiceWithAI(req, res) {
       transcription,
       response,
       conversationId,
-      language: "English"
+      language: requestedLanguage,
+      requiresConfirmation: false
     });
   } catch (error) {
     return sendControllerError(

@@ -2,7 +2,28 @@
   "language": "Ewe",
   "code": "ee",
   "validationStatus": "pending",
-  "greetings": {},
-  "healthTerms": {},
-  "safety": {}
+  "greetings": {
+    "hello": "Hello",
+    "welcome": "Míexɔ mi nyuie ɖe HealthBot GH",
+    "howCanIHelp": "Aleke mate ŋu akpe ɖe ŋuwò egbea?"
+  },
+  "healthTerms": {
+    "fever": "Asrã",
+    "headache": "Taɖuame",
+    "stomachPain": "Dɔgbo ƒe vevesese",
+    "vomiting": "Ʋuʋudedi",
+    "diarrhoea": "Dɔmetɔtrɔ",
+    "difficultyBreathing": "Yagbɔgbɔ sesẽ",
+    "malaria": "Asrãdɔ",
+    "hospital": "Kɔ̃dzi",
+    "doctor": "Dᴐnᴐdzikpᴐla",
+    "nurse": "Dᴐnᴐdzikpᴐla",
+    "medicine": "Atike"
+  },
+  "safety": {
+    "seekMedicalHelp": "Di atikewɔlawo ƒe kpekpeɖeŋu",
+    "urgentHelp": "Xɔ atikewɔlawo ƒe kpekpeɖeŋu kpata",
+    "nearestHospital": "Yi kɔdzi si te ɖe ŋuwò wu",
+    "emergency112": "Ƒo ka na dɔwɔƒe siwo kpɔa nudzɔdzɔ kpatawo gbɔ le 112"
+  }
 }

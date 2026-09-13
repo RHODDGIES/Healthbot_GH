@@ -31,7 +31,8 @@ function normalizeMimeType(mimeType) {
 async function transcribeAudio(
   audioBuffer,
   mimeType,
-  groqClient = groq
+  groqClient = groq,
+  transcriptionOptions = {}
 ) {
   if (!Buffer.isBuffer(audioBuffer) || audioBuffer.length === 0) {
     throw new Error("A valid audio buffer is required.");
@@ -53,13 +54,38 @@ async function transcribeAudio(
     }
   );
 
+  const transcriptionRequest = {
+    file: audioFile,
+    model: TRANSCRIPTION_MODEL,
+    response_format: "json",
+    temperature: 0
+  };
+  const safeTranscriptionOptions =
+    transcriptionOptions && typeof transcriptionOptions === "object"
+      ? transcriptionOptions
+      : {};
+
+  const requestedLanguage =
+    typeof safeTranscriptionOptions.language === "string"
+      ? safeTranscriptionOptions.language.trim().toLowerCase()
+      : "";
+  const transcriptionPrompt =
+    typeof safeTranscriptionOptions.prompt === "string"
+      ? safeTranscriptionOptions.prompt.trim()
+      : "";
+
+  if (requestedLanguage) {
+    transcriptionRequest.language = requestedLanguage;
+  }
+
+  if (transcriptionPrompt) {
+    transcriptionRequest.prompt = transcriptionPrompt;
+  }
+
   const transcription =
-    await groqClient.audio.transcriptions.create({
-      file: audioFile,
-      model: TRANSCRIPTION_MODEL,
-      response_format: "json",
-      temperature: 0
-    });
+    await groqClient.audio.transcriptions.create(
+      transcriptionRequest
+    );
 
   const transcript = transcription?.text?.trim();
 

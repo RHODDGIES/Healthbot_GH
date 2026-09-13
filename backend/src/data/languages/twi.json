@@ -2,7 +2,28 @@
   "language": "Twi",
   "code": "tw",
   "validationStatus": "pending",
-  "greetings": {},
-  "healthTerms": {},
-  "safety": {}
+  "greetings": {
+    "hello": "Hɛlo",
+    "welcome": "Yɛma wo akwaaba ba HealthBot GH",
+    "howCanIHelp": "Mɛyɛ dɛn aboa wo nnɛ?"
+  },
+  "healthTerms": {
+    "fever": "Huraeɛ",
+    "headache": "Tipaeɛ",
+    "stomachPain": "Yafunu mu yaw",
+    "vomiting": "Ɔfe a wɔfe",
+    "diarrhoea": "Ayamtuo",
+    "difficultyBreathing": "Ɔhome a ɛyɛ den",
+    "malaria": "Malaria a ɛma obi nya ɔyare mmoawa",
+    "hospital": "Ayaresabea",
+    "doctor": "Nɛɛseni",
+    "nurse": "Nɛɛseni",
+    "medicine": "Aduro"
+  },
+  "safety": {
+    "seekMedicalHelp": "Hwehwɛ aduruyɛ mu ayaresa",
+    "urgentHelp": "Nya aduruyɛ mu mmoa",
+    "nearestHospital": "Kɔ ayaresabea a ɛbɛn wo",
+    "emergency112": "Frɛ adwumayɛfo a wɔhwɛ ntɛmpɛ so wɔ 112"
+  }
 }

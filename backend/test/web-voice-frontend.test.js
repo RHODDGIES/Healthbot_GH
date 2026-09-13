@@ -25,14 +25,47 @@ test("web voice notes use MediaRecorder and the protected conversation endpoint"
   assert.match(appSource, /window\.MediaRecorder/);
   assert.match(appSource, /"\/api\/ai\/voice"/);
   assert.match(appSource, /"X-Conversation-Id": conversationId/);
-  assert.match(appSource, /rawBody: audioBlob/);
+  assert.match(appSource, /rawBody: uploadBlob/);
 });
 
-test("web voice notes remain English-only for the first release", () => {
-  assert.match(appSource, /currentLanguage !== "en"/);
+test("web voice notes send the selected English, Twi or Ewe language", () => {
   assert.match(
+    appSource,
+    /voiceRecordingLanguage =\s*languageNames\[currentLanguage\]/
+  );
+  assert.match(
+    appSource,
+    /"X-HealthBot-Language": selectedLanguage/
+  );
+  assert.doesNotMatch(appSource, /currentLanguage !== "en"/);
+  assert.doesNotMatch(
     appSource,
     /Web voice notes currently support English only/
   );
-  assert.match(appSource, /"X-HealthBot-Language": "English"/);
+  assert.match(
+    appSource,
+    /data\.requiresConfirmation/
+  );
+  assert.match(
+    appSource,
+    /beginVoiceConfirmation/
+  );
+  assert.match(
+    appSource,
+    /inputType: "voice"/
+  );
+  assert.match(appSource, /prepareVoiceNoteAudio/);
+  assert.match(appSource, /convertVoiceBlobToWav/);
+  assert.match(appSource, /KHAYA_TARGET_SAMPLE_RATE = 16000/);
+  assert.match(appSource, /type: "audio\/wav"/);
+});
+
+test("Twi and Ewe voice transcripts can be corrected or cancelled", () => {
+  assert.match(htmlSource, /id="voiceTranscriptCancelButton"/);
+  assert.match(
+    appSource,
+    /Check and correct the \$\{selectedLanguage\} transcription/
+  );
+  assert.match(appSource, /sendConfirmedVoiceTranscription/);
+  assert.match(appSource, /clearPendingVoiceConfirmation/);
 });

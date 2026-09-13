@@ -28,12 +28,14 @@ function buildLanguageGuidance(language) {
   const safety =
     languageData.safety || {};
 
-  const hasValidatedTerms =
+  const hasTerminology =
     Object.keys(greetings).length > 0 ||
     Object.keys(healthTerms).length > 0 ||
     Object.keys(safety).length > 0;
+  const terminologyIsValidated =
+    String(validationStatus).toLowerCase() === "validated";
 
-  if (!hasValidatedTerms) {
+  if (!hasTerminology) {
     return `
 LANGUAGE VALIDATION
 
@@ -44,6 +46,28 @@ LANGUAGE VALIDATION
 - Avoid unusual, overly formal, archaic, or invented words.
 - If you are unsure of a specialised medical term, keep the recognised medical term in English and explain it simply in ${language}.
 - Never mix Twi and Ewe.
+`;
+  }
+
+  if (!terminologyIsValidated) {
+    return `
+LANGUAGE VALIDATION
+
+- ${language} translation validation status: ${validationStatus}.
+- The terminology below is draft wording and has not yet been medically or linguistically validated.
+- Do not describe or present this terminology as approved or validated.
+- Use the draft wording only when it is natural and preserves the English meaning.
+- If any draft medical or safety wording seems unclear, use the recognised English medical term and explain it simply in ${language}.
+- Never mix Twi and Ewe.
+
+DRAFT GREETINGS
+${JSON.stringify(greetings, null, 2)}
+
+DRAFT HEALTH TERMS
+${JSON.stringify(healthTerms, null, 2)}
+
+DRAFT SAFETY PHRASES
+${JSON.stringify(safety, null, 2)}
 `;
   }
 

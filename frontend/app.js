@@ -54,6 +54,8 @@ const voiceNoteButton =
   document.getElementById("voiceNoteButton");
 const voiceNoteStatus =
   document.getElementById("voiceNoteStatus");
+const voiceTranscriptCancelButton =
+  document.getElementById("voiceTranscriptCancelButton");
 const sendBtn = composerForm.querySelector(".send-btn");
 
 // --------------------------------------------------
@@ -75,6 +77,8 @@ let voiceChunks = [];
 let voiceRecordingTimer = null;
 let voiceRecordingStartedAt = 0;
 let discardVoiceRecording = false;
+let voiceRecordingLanguage = "English";
+let pendingVoiceConfirmation = null;
 
 const MAX_WEB_VOICE_NOTE_SECONDS = 60;
 const MAX_WEB_VOICE_NOTE_BYTES = 16 * 1024 * 1024;
@@ -84,6 +88,13 @@ const WEB_VOICE_MIME_TYPES = [
   "audio/mp4",
   "audio/webm"
 ];
+const KHAYA_WEB_AUDIO_TYPES = new Set([
+  "audio/flac",
+  "audio/mpeg",
+  "audio/ogg",
+  "audio/wav"
+]);
+const KHAYA_TARGET_SAMPLE_RATE = 16000;
 
 // --------------------------------------------------
 // LANGUAGE
@@ -224,6 +235,8 @@ function hideTyping() {
 }
 
 function updateInteractiveState() {
+  const hasPendingVoiceConfirmation =
+    Boolean(pendingVoiceConfirmation);
   const composerDisabled =
     isChatBusy ||
     isConversationBusy ||
@@ -240,14 +253,19 @@ function updateInteractiveState() {
       isChatBusy ||
       isConversationBusy ||
       isVoicePreparing ||
-      isVoiceRecording;
+      isVoiceRecording ||
+      hasPendingVoiceConfirmation;
   }
 
   if (voiceNoteButton) {
+    const selectedVoiceLanguage =
+      languageNames[currentLanguage] || languageNames.en;
+
     voiceNoteButton.disabled =
       isChatBusy ||
       isConversationBusy ||
       isVoicePreparing ||
+      hasPendingVoiceConfirmation ||
       !activeConversationId ||
       activeConversationIsLegacy;
 
@@ -263,11 +281,11 @@ function updateInteractiveState() {
       "aria-label",
       isVoiceRecording
         ? "Stop and send voice note"
-        : "Record an English voice note"
+        : `Record a ${selectedVoiceLanguage} voice note`
     );
     voiceNoteButton.title = isVoiceRecording
       ? "Stop and send voice note"
-      : "Record an English voice note";
+      : `Record a ${selectedVoiceLanguage} voice note`;
   }
 
   document
@@ -277,13 +295,15 @@ function updateInteractiveState() {
         isChatBusy ||
         isConversationBusy ||
         isVoicePreparing ||
-        isVoiceRecording;
+        isVoiceRecording ||
+        hasPendingVoiceConfirmation;
     });
 
   document
     .querySelectorAll(".chip")
     .forEach((chip) => {
-      chip.disabled = composerDisabled;
+      chip.disabled =
+        composerDisabled || hasPendingVoiceConfirmation;
     });
 
   renderConversationList();
@@ -313,6 +333,52 @@ function setVoiceNoteStatus(message = "", type = "") {
   if (type) {
     voiceNoteStatus.classList.add(type);
   }
+}
+
+function clearPendingVoiceConfirmation({
+  clearInput = true,
+  statusMessage = ""
+} = {}) {
+  pendingVoiceConfirmation = null;
+
+  if (voiceTranscriptCancelButton) {
+    voiceTranscriptCancelButton.hidden = true;
+  }
+
+  if (clearInput) {
+    messageInput.value = "";
+  }
+
+  messageInput.placeholder = "Type your question...";
+  setVoiceNoteStatus(statusMessage);
+  updateInteractiveState();
+}
+
+function beginVoiceConfirmation(
+  transcription,
+  selectedLanguage,
+  conversationId
+) {
+  pendingVoiceConfirmation = {
+    language: selectedLanguage,
+    conversationId
+  };
+
+  messageInput.value = transcription;
+  messageInput.placeholder =
+    `Correct the ${selectedLanguage} transcription`;
+
+  if (voiceTranscriptCancelButton) {
+    voiceTranscriptCancelButton.hidden = false;
+  }
+
+  setVoiceNoteStatus(
+    `Check and correct the ${selectedLanguage} transcription in the message box, then press Send.`,
+    "recording"
+  );
+  updateInteractiveState();
+  messageInput.focus();
+  messageInput.select();
 }
 
 function setNewChatLoading(isLoading) {
@@ -576,7 +642,8 @@ function renderConversationList() {
       isChatBusy ||
       isConversationBusy ||
       isVoicePreparing ||
-      isVoiceRecording;
+      isVoiceRecording ||
+      Boolean(pendingVoiceConfirmation);
 
     if (conversation.id === activeConversationId) {
       item.classList.add("is-active");
@@ -644,7 +711,8 @@ async function createNewConversation() {
     isChatBusy ||
     isConversationBusy ||
     isVoicePreparing ||
-    isVoiceRecording
+    isVoiceRecording ||
+    pendingVoiceConfirmation
   ) {
     return false;
   }
@@ -712,7 +780,8 @@ async function openConversation(conversationId) {
     isChatBusy ||
     isConversationBusy ||
     isVoicePreparing ||
-    isVoiceRecording
+    isVoiceRecording ||
+    pendingVoiceConfirmation
   ) {
     return;
   }
@@ -876,7 +945,13 @@ async function loadConversationHistory() {
 // SEND MESSAGE TO BACKEND
 // --------------------------------------------------
 
-async function getReply(message) {
+async function getReply(
+  message,
+  {
+    language = null,
+    inputType = "text"
+  } = {}
+) {
   if (!activeConversationId) {
     throw new Error(
       "Start a new chat before sending a message."
@@ -896,9 +971,10 @@ async function getReply(message) {
       body: {
         message,
         conversationId: activeConversationId,
-        language:
+        language: language ||
           languageNames[currentLanguage] ||
-          languageNames.en
+          languageNames.en,
+        inputType
       }
     }
   );
@@ -921,11 +997,17 @@ async function getReply(message) {
 // USER MESSAGE
 // --------------------------------------------------
 
-async function handleUserMessage(text) {
+async function handleUserMessage(
+  text,
+  {
+    language = null,
+    inputType = "text"
+  } = {}
+) {
   const trimmed = text.trim();
 
   if (!trimmed) {
-    return;
+    return false;
   }
 
   if (!activeConversationId || activeConversationIsLegacy) {
@@ -935,12 +1017,15 @@ async function handleUserMessage(text) {
         : "Start a new chat before sending a message."
     );
 
-    return;
+    return false;
   }
 
   addMessage(
     trimmed,
-    "user"
+    "user",
+    {
+      inputType
+    }
   );
 
   messageInput.value = "";
@@ -949,7 +1034,10 @@ async function handleUserMessage(text) {
 
   try {
     const result =
-      await getReply(trimmed);
+      await getReply(trimmed, {
+        language,
+        inputType
+      });
 
     addMessage(
       result.text,
@@ -962,6 +1050,8 @@ async function handleUserMessage(text) {
 
     recordConversationActivity(trimmed);
 
+    return true;
+
   } catch (error) {
     console.error(
       "HealthBot frontend error:",
@@ -973,14 +1063,221 @@ async function handleUserMessage(text) {
         "HealthBot is temporarily unavailable. Please try again shortly."
     );
 
+    return false;
+
   } finally {
     setLoading(false);
   }
 }
 
+async function sendConfirmedVoiceTranscription() {
+  if (!pendingVoiceConfirmation) {
+    return false;
+  }
+
+  const transcription = messageInput.value.trim();
+
+  if (!transcription) {
+    setVoiceNoteStatus(
+      "Correct the transcription or cancel the voice note.",
+      "error"
+    );
+
+    return false;
+  }
+
+  const confirmation = pendingVoiceConfirmation;
+
+  if (confirmation.conversationId !== activeConversationId) {
+    clearPendingVoiceConfirmation({
+      statusMessage:
+        "That conversation changed. Please record the voice note again."
+    });
+
+    return false;
+  }
+
+  clearPendingVoiceConfirmation({
+    clearInput: false,
+    statusMessage:
+      `Sending the corrected ${confirmation.language} transcription...`
+  });
+
+  const sent = await handleUserMessage(
+    transcription,
+    {
+      language: confirmation.language,
+      inputType: "voice"
+    }
+  );
+
+  setVoiceNoteStatus(
+    sent
+      ? `${confirmation.language} voice note sent.`
+      : "The voice note was not sent. Please try again.",
+    sent ? "" : "error"
+  );
+
+  return sent;
+}
+
 // --------------------------------------------------
-// WEB VOICE NOTES (ENGLISH FIRST)
+// WEB VOICE NOTES
 // --------------------------------------------------
+
+function normalizeAudioMimeType(mimeType) {
+  if (!mimeType || typeof mimeType !== "string") {
+    return "";
+  }
+
+  return mimeType
+    .split(";")[0]
+    .trim()
+    .toLowerCase();
+}
+
+function mixAudioBufferToMono(audioBuffer) {
+  const channelCount = audioBuffer.numberOfChannels;
+  const monoSamples = new Float32Array(audioBuffer.length);
+
+  for (let channel = 0; channel < channelCount; channel += 1) {
+    const channelSamples = audioBuffer.getChannelData(channel);
+
+    for (let index = 0; index < channelSamples.length; index += 1) {
+      monoSamples[index] += channelSamples[index] / channelCount;
+    }
+  }
+
+  return monoSamples;
+}
+
+function resampleMonoAudio(samples, sourceRate, targetRate) {
+  if (sourceRate === targetRate) {
+    return samples.slice();
+  }
+
+  const outputLength = Math.max(
+    1,
+    Math.round(samples.length * targetRate / sourceRate)
+  );
+  const output = new Float32Array(outputLength);
+  const sourceStep = sourceRate / targetRate;
+
+  for (let index = 0; index < outputLength; index += 1) {
+    const sourcePosition = index * sourceStep;
+    const leftIndex = Math.floor(sourcePosition);
+    const rightIndex = Math.min(
+      leftIndex + 1,
+      samples.length - 1
+    );
+    const fraction = sourcePosition - leftIndex;
+
+    output[index] =
+      samples[leftIndex] * (1 - fraction) +
+      samples[rightIndex] * fraction;
+  }
+
+  return output;
+}
+
+function writeWavText(view, offset, text) {
+  for (let index = 0; index < text.length; index += 1) {
+    view.setUint8(offset + index, text.charCodeAt(index));
+  }
+}
+
+function createPcmWavBlob(samples, sampleRate) {
+  const bytesPerSample = 2;
+  const dataLength = samples.length * bytesPerSample;
+  const wavBuffer = new ArrayBuffer(44 + dataLength);
+  const view = new DataView(wavBuffer);
+
+  writeWavText(view, 0, "RIFF");
+  view.setUint32(4, 36 + dataLength, true);
+  writeWavText(view, 8, "WAVE");
+  writeWavText(view, 12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * bytesPerSample, true);
+  view.setUint16(32, bytesPerSample, true);
+  view.setUint16(34, 16, true);
+  writeWavText(view, 36, "data");
+  view.setUint32(40, dataLength, true);
+
+  for (let index = 0; index < samples.length; index += 1) {
+    const sample = Math.max(-1, Math.min(1, samples[index]));
+    const pcmValue = sample < 0
+      ? sample * 0x8000
+      : sample * 0x7fff;
+
+    view.setInt16(44 + index * bytesPerSample, pcmValue, true);
+  }
+
+  return new Blob([wavBuffer], {
+    type: "audio/wav"
+  });
+}
+
+async function convertVoiceBlobToWav(audioBlob) {
+  const AudioContextClass =
+    window.AudioContext || window.webkitAudioContext;
+
+  if (!AudioContextClass) {
+    throw new Error(
+      "This browser cannot prepare Twi or Ewe voice notes. Try a current version of Chrome, Edge, Firefox or Safari."
+    );
+  }
+
+  const audioContext = new AudioContextClass();
+
+  try {
+    const encodedAudio = await audioBlob.arrayBuffer();
+    const decodedAudio = await audioContext.decodeAudioData(
+      encodedAudio.slice(0)
+    );
+    const monoSamples = mixAudioBufferToMono(decodedAudio);
+    const resampledSamples = resampleMonoAudio(
+      monoSamples,
+      decodedAudio.sampleRate,
+      KHAYA_TARGET_SAMPLE_RATE
+    );
+
+    return createPcmWavBlob(
+      resampledSamples,
+      KHAYA_TARGET_SAMPLE_RATE
+    );
+  } catch (error) {
+    console.error("Voice audio conversion error:", error);
+
+    throw new Error(
+      "HealthBot could not prepare this voice note for transcription. Please record it again."
+    );
+  } finally {
+    if (typeof audioContext.close === "function") {
+      await audioContext.close().catch(() => {});
+    }
+  }
+}
+
+async function prepareVoiceNoteAudio(audioBlob, selectedLanguage) {
+  if (selectedLanguage === "English") {
+    return audioBlob;
+  }
+
+  const mimeType = normalizeAudioMimeType(audioBlob.type);
+
+  if (KHAYA_WEB_AUDIO_TYPES.has(mimeType)) {
+    return audioBlob;
+  }
+
+  setVoiceNoteStatus(
+    `Preparing your ${selectedLanguage} voice note...`
+  );
+
+  return convertVoiceBlobToWav(audioBlob);
+}
 
 function getSupportedVoiceMimeType() {
   if (
@@ -1032,7 +1329,7 @@ function updateVoiceRecordingStatus() {
   );
 
   setVoiceNoteStatus(
-    `Recording ${formatRecordingDuration(elapsedSeconds)} - tap the microphone to send.`,
+    `Recording in ${voiceRecordingLanguage} ${formatRecordingDuration(elapsedSeconds)} - tap the microphone to send.`,
     "recording"
   );
 
@@ -1041,7 +1338,7 @@ function updateVoiceRecordingStatus() {
   }
 }
 
-async function sendWebVoiceNote(audioBlob) {
+async function sendWebVoiceNote(audioBlob, selectedLanguage) {
   if (!audioBlob.size) {
     addSystemMessage(
       "No audio was recorded. Please try the voice note again."
@@ -1062,27 +1359,64 @@ async function sendWebVoiceNote(audioBlob) {
 
   const conversationId = activeConversationId;
 
-  setVoiceNoteStatus("Transcribing your voice note and preparing a reply...");
+  setVoiceNoteStatus(
+    selectedLanguage === "English"
+      ? "Transcribing your English voice note and preparing a reply..."
+      : `Preparing your ${selectedLanguage} voice note...`
+  );
   setLoading(true);
 
   try {
+    const uploadBlob = await prepareVoiceNoteAudio(
+      audioBlob,
+      selectedLanguage
+    );
+
+    if (uploadBlob.size > MAX_WEB_VOICE_NOTE_BYTES) {
+      throw new Error(
+        "That voice note is too large. Please record a shorter message."
+      );
+    }
+
+    if (selectedLanguage !== "English") {
+      setVoiceNoteStatus(
+        `Transcribing your ${selectedLanguage} voice note...`
+      );
+    }
+
     const data = await requestApi(
       "/api/ai/voice",
       {
         method: "POST",
-        rawBody: audioBlob,
+        rawBody: uploadBlob,
         headers: {
-          "Content-Type": audioBlob.type || "audio/webm",
+          "Content-Type": uploadBlob.type || "audio/webm",
           "X-Conversation-Id": conversationId,
-          "X-HealthBot-Language": "English"
+          "X-HealthBot-Language": selectedLanguage
         },
         timeoutMs: 60000
       }
     );
 
-    if (!data.transcription || !data.response) {
+    if (!data.transcription) {
       throw new Error(
         "HealthBot could not transcribe that voice note."
+      );
+    }
+
+    if (data.requiresConfirmation) {
+      beginVoiceConfirmation(
+        data.transcription,
+        data.language || selectedLanguage,
+        data.conversationId || conversationId
+      );
+
+      return;
+    }
+
+    if (!data.response) {
+      throw new Error(
+        "HealthBot did not return a response."
       );
     }
 
@@ -1096,10 +1430,12 @@ async function sendWebVoiceNote(audioBlob) {
 
     addMessage(data.response, "bot");
     recordConversationActivity(data.transcription);
-    setVoiceNoteStatus("Voice note sent.");
+    const successMessage = "Voice note sent.";
+
+    setVoiceNoteStatus(successMessage);
 
     setTimeout(() => {
-      if (voiceNoteStatus?.textContent === "Voice note sent.") {
+      if (voiceNoteStatus?.textContent === successMessage) {
         setVoiceNoteStatus();
       }
     }, 4000);
@@ -1121,6 +1457,7 @@ async function sendWebVoiceNote(audioBlob) {
 
 async function finishVoiceRecording(recorder) {
   const shouldDiscard = discardVoiceRecording;
+  const selectedLanguage = voiceRecordingLanguage;
   const recordedMimeType =
     recorder.mimeType || voiceChunks[0]?.type || "audio/webm";
   const audioBlob = new Blob(voiceChunks, {
@@ -1143,7 +1480,7 @@ async function finishVoiceRecording(recorder) {
     return;
   }
 
-  await sendWebVoiceNote(audioBlob);
+  await sendWebVoiceNote(audioBlob, selectedLanguage);
 }
 
 function stopVoiceRecording(discard = false) {
@@ -1164,18 +1501,6 @@ function stopVoiceRecording(discard = false) {
 }
 
 async function startVoiceRecording() {
-  if (currentLanguage !== "en") {
-    addSystemMessage(
-      "Web voice notes currently support English only. Switch to English to record."
-    );
-    setVoiceNoteStatus(
-      "Switch to English to record a voice note.",
-      "error"
-    );
-
-    return;
-  }
-
   if (!activeConversationId || activeConversationIsLegacy) {
     addSystemMessage(
       activeConversationIsLegacy
@@ -1201,8 +1526,12 @@ async function startVoiceRecording() {
     return;
   }
 
+  voiceRecordingLanguage =
+    languageNames[currentLanguage] || languageNames.en;
   isVoicePreparing = true;
-  setVoiceNoteStatus("Waiting for microphone permission...");
+  setVoiceNoteStatus(
+    `Waiting for microphone permission for ${voiceRecordingLanguage}...`
+  );
   updateInteractiveState();
 
   try {
@@ -1286,9 +1615,13 @@ composerForm.addEventListener(
   (event) => {
     event.preventDefault();
 
-    handleUserMessage(
-      messageInput.value
-    );
+    if (pendingVoiceConfirmation) {
+      sendConfirmedVoiceTranscription();
+    } else {
+      handleUserMessage(
+        messageInput.value
+      );
+    }
   }
 );
 
@@ -1298,6 +1631,12 @@ voiceNoteButton?.addEventListener("click", () => {
   } else {
     startVoiceRecording();
   }
+});
+
+voiceTranscriptCancelButton?.addEventListener("click", () => {
+  clearPendingVoiceConfirmation({
+    statusMessage: "Voice transcription cancelled."
+  });
 });
 
 // --------------------------------------------------
@@ -1416,6 +1755,10 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     if (isVoiceRecording) {
       stopVoiceRecording(true);
+    } else if (pendingVoiceConfirmation) {
+      clearPendingVoiceConfirmation({
+        statusMessage: "Voice transcription cancelled."
+      });
     }
 
     closeConversationSidebar();
