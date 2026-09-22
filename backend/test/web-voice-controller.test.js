@@ -277,3 +277,20 @@ test("rejects voice notes without an active conversation", async () => {
   assert.deepEqual(calls.transcribed, []);
   assert.deepEqual(calls.khayaTranscribed, []);
 });
+
+test("rejects web voice notes above the Netlify-safe 4 MB limit", async () => {
+  resetCalls();
+
+  const res = createResponse();
+  const req = createRequest({
+    body: Buffer.alloc(4 * 1024 * 1024 + 1)
+  });
+
+  await voiceWithAI(req, res);
+
+  assert.equal(res.statusCode, 413);
+  assert.match(res.payload.error, /too large/);
+  assert.deepEqual(calls.histories, []);
+  assert.deepEqual(calls.transcribed, []);
+  assert.deepEqual(calls.khayaTranscribed, []);
+});

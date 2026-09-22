@@ -14,5 +14,6 @@ frontend/firebase-config.js
 # Generated reports, test output and operating-system files
 docs/*.docx
 coverage/
+backend/dist/
 .DS_Store
 Thumbs.db

@@ -19,7 +19,7 @@ const {
   getUserConversations
 } = require("../services/health/conversation.service");
 
-const MAX_WEB_VOICE_NOTE_BYTES = 16 * 1024 * 1024;
+const MAX_WEB_VOICE_NOTE_BYTES = 4 * 1024 * 1024;
 const SUPPORTED_WEB_AUDIO_TYPES = new Set([
   "audio/flac",
   "audio/mp4",

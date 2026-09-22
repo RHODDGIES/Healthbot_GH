@@ -81,7 +81,7 @@ let voiceRecordingLanguage = "English";
 let pendingVoiceConfirmation = null;
 
 const MAX_WEB_VOICE_NOTE_SECONDS = 60;
-const MAX_WEB_VOICE_NOTE_BYTES = 16 * 1024 * 1024;
+const MAX_WEB_VOICE_NOTE_BYTES = 4 * 1024 * 1024;
 const WEB_VOICE_MIME_TYPES = [
   "audio/webm;codecs=opus",
   "audio/ogg;codecs=opus",

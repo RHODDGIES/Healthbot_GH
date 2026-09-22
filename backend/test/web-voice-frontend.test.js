@@ -26,6 +26,10 @@ test("web voice notes use MediaRecorder and the protected conversation endpoint"
   assert.match(appSource, /"\/api\/ai\/voice"/);
   assert.match(appSource, /"X-Conversation-Id": conversationId/);
   assert.match(appSource, /rawBody: uploadBlob/);
+  assert.match(
+    appSource,
+    /MAX_WEB_VOICE_NOTE_BYTES = 4 \* 1024 \* 1024/
+  );
 });
 
 test("web voice notes send the selected English, Twi or Ewe language", () => {

@@ -20,7 +20,7 @@ router.post(
   authenticateUser,
   express.raw({
     type: () => true,
-    limit: "16mb"
+    limit: "4mb"
   }),
   voiceWithAI
 );
