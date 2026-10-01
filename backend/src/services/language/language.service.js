@@ -1,16 +1,7 @@
-const path = require("path");
-
-const englishData = require(
-  path.join(__dirname, "../../data/languages/english.json")
-);
-
-const twiData = require(
-  path.join(__dirname, "../../data/languages/twi.json")
-);
-
-const eweData = require(
-  path.join(__dirname, "../../data/languages/ewe.json")
-);
+// Keep these imports static so serverless bundlers include the JSON datasets.
+const englishData = require("../../data/languages/english.json");
+const twiData = require("../../data/languages/twi.json");
+const eweData = require("../../data/languages/ewe.json");
 
 /**
  * Detect the language of a user's message.
