@@ -31,6 +31,26 @@ mockModule("../src/services/ai/groq-transcription.provider", {
   transcribeAudio: async () => "test transcription"
 });
 
+mockModule("../src/middleware/auth.middleware", {
+  authenticateUser(req, res, next) {
+    req.user = {
+      uid: "netlify-test-user"
+    };
+
+    next();
+  }
+});
+
+mockModule("../src/services/health/conversation.service", {
+  createChatSession: async () => ({}),
+  getChatHistory: async () => [],
+  getChatSessionWithMessages: async () => ({}),
+  getUserConversations: async () => [],
+  listUserChatSessions: async () => [],
+  saveChatTurn: async () => ({}),
+  saveConversation: async () => "netlify-test-conversation"
+});
+
 const {
   handler
 } = require("../netlify/functions/api");
@@ -54,6 +74,29 @@ test("Netlify Express function serves the API health route", async () => {
     service: "HealthBot GH",
     message: "HealthBot GH API is running"
   });
+});
+
+test("Netlify Express function parses JSON chat request bodies", async () => {
+  const response = await handler({
+    httpMethod: "POST",
+    path: "/api/ai/chat",
+    headers: {
+      authorization: "Bearer netlify-test-token",
+      "content-type": "application/json"
+    },
+    multiValueHeaders: {},
+    queryStringParameters: null,
+    multiValueQueryStringParameters: null,
+    body: JSON.stringify({
+      message: "Hello",
+      language: "English"
+    }),
+    isBase64Encoded: false,
+    requestContext: {}
+  }, {});
+
+  assert.equal(response.statusCode, 200);
+  assert.equal(JSON.parse(response.body).response, "test response");
 });
 
 test("Netlify Express function completes Meta webhook verification", async () => {
